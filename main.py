@@ -3,6 +3,7 @@
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import math
+import itertools
 
 import cmudict
 from syllable_matrices import vowel_matrix, consonant_matrix
@@ -12,6 +13,10 @@ cmu_consonants = [a for (a, b) in cmudict.phones() if b != ['vowel'] and b != ['
 
 
 def sentence_to_syllables(sentence):
+    """
+    :param sentence: String of text
+    :return: the phones in that text
+    """
     words = sentence.split(" ")
     res = cmudict.dict()[words[0]][0]
     for word in words[1:]:
@@ -20,45 +25,61 @@ def sentence_to_syllables(sentence):
 
 
 def get_phone_type(input_phone):
+    """
+    :param input_phone: String containing capitalized characters that resemble an phoneme in the Arpanet
+    :return: type of phoneme
+    """
     for (phone, type) in cmudict.phones():
         if input_phone == phone:
             return type[0]
 
 
-def get_rhyme_score(a, b):
-    if a in cmu_vowels and b in cmu_vowels:
-        a_index = cmu_vowels.index(a)
-        b_index = cmu_vowels.index(b)
+def rhyme_score(phoneme_1, phoneme_2):
+    """
+    Look up function for the rhyme score of two phonemes given that they are either both vowels or both consonants
+    :param phoneme_1: a phoneme according to Arpanet
+    :param phoneme_2: a phoneme according to Arpanet
+    :return: the corresponding rhyme score of the two phonemes
+    """
+    if phoneme_1 in cmu_vowels and phoneme_2 in cmu_vowels:
+        a_index = cmu_vowels.index(phoneme_1)
+        b_index = cmu_vowels.index(phoneme_2)
         if a_index > b_index:
             a_index, b_index = b_index, a_index
         return vowel_matrix[a_index][b_index]
-    elif a in cmu_consonants and b in cmu_consonants:
-        a_index = cmu_consonants.index(a)
-        b_index = cmu_consonants.index(b)
+    elif phoneme_1 in cmu_consonants and phoneme_2 in cmu_consonants:
+        a_index = cmu_consonants.index(phoneme_1)
+        b_index = cmu_consonants.index(phoneme_2)
         if a_index > b_index:
             a_index, b_index = b_index, a_index
         return consonant_matrix[a_index][b_index]
     else:
         raise Exception("Inputs are not of the same type")
 
-# The final score for two given syllables is the sum of the vowel score, normalized consonant score, and stress score.
+
+# TODO
+def unmatched_score(a, b):
+    pass
+
+
 def get_syllables(word):
+    """ An algorithm that groups the phonemes of an input word into syllables
+    :param word:
+    :return: A list of phoneme lists
+    """
     phones = cmudict.dict()[word][0]
-    print(phones)
     vowel_detected = False
     res = []
     temp = []
     consonants = []
     i = 0
     while i < len(phones):
-        print(f'i: {i}, phone: {phones[i]}')
         if get_phone_type(phones[i][0:2]) == 'vowel':
             if vowel_detected:
-                half = math.ceil(len(consonants)/2)
+                half = math.ceil(len(consonants) / 2)
                 temp.extend(consonants[0:half])
                 res.append(temp)
-                print(half)
-                i = i - (half)
+                i = i - (half + 1)
                 temp = []
                 consonants = []
                 vowel_detected = False
@@ -73,12 +94,53 @@ def get_syllables(word):
         i = i + 1
     temp.extend(consonants)
     res.append(temp)
+    for i in range(0, len(res) - 1):
+        if res[i][len(res[i]) - 1] == res[i + 1][0]:
+            cut = len(res[i]) - 1
+            res[i] = res[i][0:cut]
     return res
 
 
-# Press the green button in the gutter to run the script.
+def syllable_score(syllable_1, syllable_2):
+    """
+    :param syllable_1: a group of phonemes
+    :param syllable_2: a group of phonemes
+    return the rhyme score for both syllables according to the formula: TODO
+    """
+    vowel_position_1, vowel_position_2 = vowel_position(syllable_1), vowel_position(syllable_2)
+    vowel_score = rhyme_score(syllable_1[vowel_position_1][0:2], syllable_2[vowel_position_2][0:2])
+    stress_score = int(syllable_1[vowel_position_1][2]) + int(syllable_2[vowel_position_2][2])
+    consonant_score = 0
+    consonants_1 = syllable_1[vowel_position_1 + 1: len(syllable_1)]
+    consonants_2 = syllable_2[vowel_position_2 + 1: len(syllable_2)]
+    paired_consonants = itertools.zip_longest(consonants_1, consonants_2)
+    for pair in list(paired_consonants):
+        consonant_score += rhyme_score(pair[0], pair[1])
+
+    consonant_score = consonant_score / max(len(consonants_1),len(consonants_2))
+
+    return vowel_score + stress_score + consonant_score
+    # coda in front of nucleus
+
+
+def vowel_position(syllable):
+    for i in range(0, len(syllable)):
+        if get_phone_type(syllable[i][0:2]) == 'vowel':
+            return i
+    return 0
+
+
 if __name__ == '__main__':
-    print(get_syllables("pandemonium"))
+    rain = get_syllables('rain')
+    frame = get_syllables('frame')
+    print(rain)
+    print(frame)
+    print(syllable_score(rain[0], frame[0]))
 
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+# NOTES
+# The final score for two given syllables is the sum of the vowel score, normalized consonant score, and stress score.
+# This version of CMU has semivowels which are not included into the research by Hirjee
+# How is stress score calculated?
+# Which unmatched thing should I take? For now I just use the same thing
+# Is this way of getting syllables good enough?
+# How will I do the alignment
