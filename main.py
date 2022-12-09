@@ -57,11 +57,6 @@ def rhyme_score(phoneme_1, phoneme_2):
         raise Exception("Inputs are not of the same type")
 
 
-# TODO
-def unmatched_score(a, b):
-    pass
-
-
 def get_syllables(word):
     """ An algorithm that groups the phonemes of an input word into syllables
     :param word:
@@ -111,19 +106,35 @@ def syllable_score(syllable_1, syllable_2):
     vowel_score = rhyme_score(syllable_1[vowel_position_1][0:2], syllable_2[vowel_position_2][0:2])
     stress_score = int(syllable_1[vowel_position_1][2]) + int(syllable_2[vowel_position_2][2])
     consonant_score = 0
-    consonants_1 = syllable_1[vowel_position_1 + 1: len(syllable_1)]
-    consonants_2 = syllable_2[vowel_position_2 + 1: len(syllable_2)]
+    consonants_1, consonants_2 = [], []
+    if len(syllable_1) != vowel_position_1:
+        consonants_1 = syllable_1[vowel_position_1 + 1: len(syllable_1)]
+    if len(syllable_2) != vowel_position_2:
+        consonants_2 = syllable_2[vowel_position_2 + 1: len(syllable_2)]
     paired_consonants = itertools.zip_longest(consonants_1, consonants_2)
+    print(list(paired_consonants))
     for pair in list(paired_consonants):
-        consonant_score += rhyme_score(pair[0], pair[1])
+        if pair[0] is None:
+            print('a')
+            consonant_score += consonant_matrix[cmu_consonants.index(pair[1])][21]
+        elif pair[1] is None:
+            print('b')
+            consonant_score += consonant_matrix[cmu_consonants.index(pair[0])][21]
+        else:
+            consonant_score += rhyme_score(pair[0], pair[1])
 
-    consonant_score = consonant_score / max(len(consonants_1),len(consonants_2))
+    if (max(len(consonants_1), len(consonants_2)) > 0):
+        consonant_score = consonant_score / max(len(consonants_1), len(consonants_2))
 
     return vowel_score + stress_score + consonant_score
     # coda in front of nucleus
 
 
 def vowel_position(syllable):
+    """
+    :param syllable: list of phonemes
+    :return: the index at which the vowel is located
+    """
     for i in range(0, len(syllable)):
         if get_phone_type(syllable[i][0:2]) == 'vowel':
             return i
@@ -131,8 +142,8 @@ def vowel_position(syllable):
 
 
 if __name__ == '__main__':
-    rain = get_syllables('rain')
-    frame = get_syllables('frame')
+    rain = get_syllables('tree')
+    frame = get_syllables('tree')
     print(rain)
     print(frame)
     print(syllable_score(rain[0], frame[0]))
@@ -140,6 +151,7 @@ if __name__ == '__main__':
 # NOTES
 # The final score for two given syllables is the sum of the vowel score, normalized consonant score, and stress score.
 # This version of CMU has semivowels which are not included into the research by Hirjee
+# What is the threshold for a rhyme?
 # How is stress score calculated?
 # Which unmatched thing should I take? For now I just use the same thing
 # Is this way of getting syllables good enough?
