@@ -48,3 +48,8 @@ consonant_matrix = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2.6, 3.0, -1.3, 1.1],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6.8, -3.7, -5.6],
 ]
+
+if __name__ == '__main__':
+    print(len(consonant_matrix))
+    for row in consonant_matrix:
+        print(len(row))
