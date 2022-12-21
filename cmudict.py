@@ -61,7 +61,7 @@ def phonemes(phoneme_type):
     if (phoneme_type in phonemes.values()):
         return {k:v for k,v in phonemes.items() if v == phoneme_type}
     elif (phoneme_type == 'consonant'):
-        return {k:v for k,v in phonemes.items() if v != 'vowel' and v != 'semivowel'}
+        return {k:v for k,v in phonemes.items() if v != 'vowel' and v != 'semivowel' and v!= 'aspirate'}
     else:
         return phonemes
 
