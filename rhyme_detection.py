@@ -4,6 +4,11 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import math
 import itertools
+import pickle
+
+import numpy as np
+import pandas
+
 import cmudict
 import global_alignment
 
@@ -12,6 +17,7 @@ from syllable_matrices import vowel_matrix, consonant_matrix
 cmu_vowels = list(cmudict.phonemes('vowel').keys())
 cmu_consonants = list(cmudict.phonemes('consonant').keys())
 cmu_dict = cmudict.dict()
+cmu_dict_reversed = cmudict.reversed_dict()
 
 
 def phoneme_score(phoneme_1, phoneme_2):
@@ -70,8 +76,6 @@ def syllable_score(syllable_1, syllable_2):
     stress_score = score_stress(int(syllable_1[vowel_position_1][2]), int(syllable_2[vowel_position_2][2]))
     consonant_score = score_consonants(consonants_1, consonants_2)
 
-    print(f"v:{vowel_score},s:{stress_score},c:{consonant_score}")
-
     return vowel_score + stress_score + consonant_score
 
 
@@ -92,8 +96,6 @@ def score_consonants(consonants_1, consonants_2):
         elif pair[1] == '-':
             consonant_score += consonant_matrix[cmu_consonants.index(pair[0])][unmatched]
         else:
-            print(pair[0])
-            print(pair[1])
             consonant_score += phoneme_score(pair[0], pair[1])
 
     if (max(len(consonants_1), len(consonants_2)) > 1):
@@ -112,7 +114,7 @@ def align_consonants(consonants_1, consonants_2):
     matrix, traceBack = global_alignment.globalAlign(consonants_1, consonants_2)
     xSeq, ySeq = global_alignment.getAlignedSequences(consonants_1, consonants_2, matrix, traceBack)
 
-    return list(zip(xSeq[::-1],ySeq[::-1]))
+    return list(zip(xSeq[::-1], ySeq[::-1]))
 
 
 def vowel_position(syllable):
@@ -155,8 +157,111 @@ def rhyme_score(sentence_1, sentence_2):
     return round(score, 1)
 
 
+def rhyme_score_syllables(syllables_1, syllables_2):
+    """
+    takes two lists of syllables and calculates the individual rhyme scores to add them up
+    :param sentence_1: A string
+    :param sentence_2: A string
+    :return: Rhyme scores
+    """
+    score = 0
+    if len(syllables_1) == len(syllables_2):
+        for i in range(len(syllables_1)):
+            score += syllable_score(syllables_1[i], syllables_2[i])
+    else:
+        raise Exception("Inputs are not of the same type")
+    return round(score, 1)
+
+
+def rhyme_matrix(sentence_1, sentence_2):
+    """
+    Creates a two-dimensional array. One axis is the syllables of sentence_1 the other is the syllables of sentence_2
+    the fields are the the rhyme scores of the syllables.
+    :param sentence_1: a string
+    :param sentence_2: a string
+    :return: two dimensional array with rhyme scores
+    """
+    syllables_1, syllables_2 = sentence_to_syllables(sentence_1.upper()), sentence_to_syllables(sentence_2.upper())
+    dimension = (len(syllables_1), len(syllables_2))
+    result = np.zeros(dimension)
+    for i in range(len(syllables_1)):
+        for j in range(len(syllables_2)):
+            result[i][j] = syllable_score(syllables_1[i], syllables_2[j])
+    return result
+
+
+def rhyme_table(sentence_1, sentence_2):
+    """
+    uses the rhyme_matrix but adds the the index and columns
+    :param sentence_1:
+    :param sentence_2:
+    :return rhyme_table
+    """
+    df = pandas.DataFrame(rhyme_matrix(sentence_1, sentence_2))
+    df.index = [''.join(syllable) for syllable in sentence_to_syllables(sentence_1)]
+    df.columns = [''.join(syllable) for syllable in sentence_to_syllables(sentence_2)]
+    return df
+
+
+def sliding_window(sentence_1, sentence_2):
+    """
+    Uses a sliding window to determine where the rhyme takes place
+    :param sentence_1: a string
+    :param sentence_2: a string
+    :return: a tuple with the syllables and the rhyme score
+    """
+
+    syllables_1, syllables_2 = sentence_to_syllables(sentence_1), sentence_to_syllables(sentence_2)
+    if len(syllables_1) > len(syllables_2):
+        syllables_1, syllables_2 = syllables_2, syllables_1
+    scores = []
+    size = len(syllables_1)
+    for i in range(len(syllables_2) - size + 1):
+        window = syllables_2[i:i + size]
+        scores.append((window, rhyme_score_syllables(syllables_1,window)))
+
+    return max(scores, key=lambda x: x[1])
+
+
+def needs_penalty(sentence_1, sentence_2):
+    words = sentence_1.split(" ") + sentence_2.split(" ")
+    return len(set(words)) != len(words)
+
+
+# TODO dit is mogelijk kapot
+def words_from_syllables(syllables, sentence):
+    matching_syllables = {word: cmu_dict[word.upper()] for word in sentence.split()}
+    result = []
+    for k, v in matching_syllables.items():
+        for syllable in syllables:
+            if syllable in v:
+                result.append(k)
+                break
+    return result
+
+
+def select_rhyme_words(sentence_1, sentence_2):
+    if len(sentence_to_syllables(sentence_1)) > len(sentence_to_syllables(sentence_2)):
+        sentence_1, sentence_2 = sentence_2, sentence_1
+    return words_from_syllables(sliding_window(sentence_1, sentence_2)[0], sentence_2)
+
+
 if __name__ == '__main__':
-    print(align_consonants(['L','D'],['D']))
+    input_1 = "murder threat"
+
+    with open('wiki_dump.txt', 'rb') as f:
+        similarities = pickle.load(f)
+
+    ngrams = [' '.join(words) for words in similarities.keys()]
+    result = []
+    for ngram in ngrams:
+        try:
+            chosen_rhyme = sliding_window(input_1, ngram)
+            result.append((words_from_syllables(chosen_rhyme[0], ngram), chosen_rhyme[1]))
+        except:
+            pass
+    best_result = max(result, key=lambda x: x[1])
+    print(best_result)
 
 # NOTES
 # The final score for two given syllables is the sum of the vowel score, normalized consonant score, and stress score.

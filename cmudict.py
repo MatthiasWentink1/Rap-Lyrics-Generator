@@ -11,6 +11,14 @@ def dict():
             res[linesplit[0]] = temp
     return res
 
+def reversed_dict():
+    res = {}
+    f = open('cmudict.rep')
+    for line in f.read().splitlines():
+        if (line[0]) != '#':
+            split = line.split(" ", 1)
+            res[split[1]] = split[0]
+    return res
 
 def phonemes(phoneme_type):
     """
@@ -66,4 +74,4 @@ def phonemes(phoneme_type):
         return phonemes
 
 if __name__ == '__main__':
-    print(dict()['FRAMING'])
+    print(dict().keys())

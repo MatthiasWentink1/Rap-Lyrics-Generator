@@ -5,13 +5,14 @@ from pprint import pprint as print
 from gensim.models.fasttext import FastText
 from gensim.test.utils import datapath
 import pickle
+import rhyme_detection
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-import gensim.downloader as api
+# import gensim.downloader as api
 
-wv = api.load('fasttext-wiki-news-subwords-300')
-
+# wv = api.load('fasttext-wiki-news-subwords-300')
+wv = []
 
 def corpus_to_ngram(corpus, n):
     """
@@ -63,15 +64,17 @@ def word_similarity(word, similarity_scores, filter=0):
 
 
 if __name__ == '__main__':
-    with open('dataset3-processed.txt', 'r') as f:
-        tri_grams = corpus_to_ngram(f, 3)
-        similarity = ngrams_similarity_score(tri_grams)
-
-    # with open('wiki_dump.txt','wb') as f:
-    #     pickle.dump(similarity, f, protocol=pickle.HIGHEST_PROTOCOL)
-
+    # with open('dataset3-processed.txt', 'r') as f:
+    #     tri_grams = corpus_to_ngram(f, 3)
+    #     similarity = ngrams_similarity_score(tri_grams)
+    #
+    # # with open('wiki_dump.txt','wb') as f:
+    # #     pickle.dump(similarity, f, protocol=pickle.HIGHEST_PROTOCOL)
+    #
     # with open('wiki_dump.txt', 'rb') as f:
     #     similarities = pickle.load(f)
     #     words = word_similarity('bird', similarities, 0.85)
     #     print(words)
     #     i = 0
+
+    print(rhyme_detection.rhyme_score("High","Bye"))
