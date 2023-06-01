@@ -19,6 +19,10 @@ cmu_consonants = list(cmudict.phonemes('consonant').keys())
 cmu_dict = cmudict.dict()
 cmu_dict_reversed = cmudict.reversed_dict()
 
+with open('two_tuples.txt', 'rb') as f:
+    similarity = pickle.load(f)
+    ngrams = [' '.join(words) for words in similarity.keys()]
+
 
 def phoneme_score(phoneme_1, phoneme_2):
     """
@@ -40,7 +44,7 @@ def phoneme_score(phoneme_1, phoneme_2):
             a_index, b_index = b_index, a_index
         return consonant_matrix[a_index][b_index]
     else:
-        raise Exception("Inputs are not of the same type")
+        return -3 #a consonant is matched with a vowel.
 
 
 def score_stress(stress_1, stress_2):
@@ -64,9 +68,11 @@ def syllable_score(syllable_1, syllable_2):
     """
     :param syllable_1: a group of phonemes
     :param syllable_2: a group of phonemes
-    return the rhyme score for both syllables according to the formula: TODO
+    return the rhyme score for both syllables
     """
     vowel_position_1, vowel_position_2 = vowel_position(syllable_1), vowel_position(syllable_2)
+    if vowel_position_1 < 0 or vowel_position_2 < 0:
+        return -3
     consonants_1, consonants_2 = [], []
     if len(syllable_1) != vowel_position_1:
         consonants_1 = syllable_1[vowel_position_1 + 1: len(syllable_1)]
@@ -91,12 +97,18 @@ def score_consonants(consonants_1, consonants_2):
     for i in range(len(paired_consonants)):
         pair = paired_consonants[i]
         unmatched = 22 if i >= len(paired_consonants) / 2 else 21
-        if pair[0] == '-':
-            consonant_score += consonant_matrix[cmu_consonants.index(pair[1])][unmatched]
-        elif pair[1] == '-':
-            consonant_score += consonant_matrix[cmu_consonants.index(pair[0])][unmatched]
-        else:
-            consonant_score += phoneme_score(pair[0], pair[1])
+        try:
+            if pair[0] == '-':
+                consonant_score += consonant_matrix[cmu_consonants.index(pair[1])][unmatched]
+            elif pair[1] == '-':
+                consonant_score += consonant_matrix[cmu_consonants.index(pair[0])][unmatched]
+            else:
+                try:
+                    consonant_score += phoneme_score(pair[0], pair[1])
+                except:
+                    pass
+        except (KeyError,ValueError):
+            pass
 
     if (max(len(consonants_1), len(consonants_2)) > 1):
         consonant_score = consonant_score / max(len(consonants_1), len(consonants_2))
@@ -125,7 +137,7 @@ def vowel_position(syllable):
     for i in range(0, len(syllable)):
         if cmudict.phonemes('')[syllable[i][0:2]] == 'vowel':
             return i
-    return 0
+    return -1
 
 
 def sentence_to_syllables(sentence):
@@ -152,6 +164,7 @@ def rhyme_score(sentence_1, sentence_2):
     if len(syllables_1) == len(syllables_2):
         for i in range(len(syllables_1)):
             score += syllable_score(syllables_1[i], syllables_2[i])
+        score = score / len(syllables_1)
     else:
         raise Exception("Inputs are not of the same type")
     return round(score, 1)
@@ -168,8 +181,9 @@ def rhyme_score_syllables(syllables_1, syllables_2):
     if len(syllables_1) == len(syllables_2):
         for i in range(len(syllables_1)):
             score += syllable_score(syllables_1[i], syllables_2[i])
+        score = score / len(syllables_1)
     else:
-        raise Exception("Inputs are not of the same type")
+        print(f"{syllables_1},{syllables_2}")
     return round(score, 1)
 
 
@@ -218,12 +232,16 @@ def sliding_window(sentence_1, sentence_2):
     size = len(syllables_1)
     for i in range(len(syllables_2) - size + 1):
         window = syllables_2[i:i + size]
-        scores.append((window, rhyme_score_syllables(syllables_1,window)))
-
-    return max(scores, key=lambda x: x[1])
+        scores.append((window, rhyme_score_syllables(syllables_1, window)))
+    result = max(scores, key=lambda x: x[1])
+    if needs_penalty(sentence_1, sentence_2):
+        return (result[0], result[1] * 0.25)
+    else:
+        return result
 
 
 def needs_penalty(sentence_1, sentence_2):
+    sentence_1, sentence_2 = sentence_1.lower(), sentence_2.lower()
     words = sentence_1.split(" ") + sentence_2.split(" ")
     return len(set(words)) != len(words)
 
@@ -247,23 +265,26 @@ def select_rhyme_words(sentence_1, sentence_2):
 
 
 if __name__ == '__main__':
-    input_1 = "murder threat"
-
-    with open('wiki_dump.txt', 'rb') as f:
-        similarities = pickle.load(f)
-
-    ngrams = [' '.join(words) for words in similarities.keys()]
     result = []
+    word = "happening"
+    print(cmu_dict["HAPPENING"])
+    print(cmu_dict["DABBLED"])
+    print(cmu_dict["IN"])
     for ngram in ngrams:
         try:
-            chosen_rhyme = sliding_window(input_1, ngram)
-            result.append((words_from_syllables(chosen_rhyme[0], ngram), chosen_rhyme[1]))
+            chosen_rhyme = sliding_window(word, ngram)
+            if chosen_rhyme[1] > 3.0:
+                result.append(words_from_syllables(chosen_rhyme[0], ngram))
         except:
             pass
-    best_result = max(result, key=lambda x: x[1])
-    print(best_result)
+    for res in result:
+        if len(res) > 0:
+            print(res)
 
-# NOTES
+
+
+
+# NOTESt
 # The final score for two given syllables is the sum of the vowel score, normalized consonant score, and stress score.
 # This version of CMU has semivowels which are not included into the research by Hirjee
 # How is stress score calculated?

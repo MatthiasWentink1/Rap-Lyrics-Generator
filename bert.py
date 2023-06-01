@@ -1,19 +1,22 @@
 from transformers import BertTokenizer, BertForMaskedLM
+from datasets import load_dataset
 import torch
 
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertForMaskedLM.from_pretrained("bert-base-uncased")
 
+def tokenize_function(examples):
+    result = tokenizer(examples["text"])
+    if tokenizer.is_fast:
+        result["word_ids"] = [result.word_ids(i) for i in range(len(result["input_ids"]))]
 
 
 if __name__ == '__main__':
-    inputs = tokenizer("The [MASK] and [MASK] like to [MASK] but not to [MASK].", return_tensors="pt")
+    imdb_dataset = load_dataset("imdb")
 
-    with torch.no_grad():
-        logits = model(**inputs).logits
+    tokenized_datasets = imdb_dataset.map(
+        tokenize_function, batched=True, remove_columns=["text","label"]
+    )
 
-    # retrieve index of [MASK]
-    mask_token_index = (inputs.input_ids == tokenizer.mask_token_id)[0].nonzero(as_tuple=True)[0]
+    print(tokenized_datasets)
 
-    predicted_token_id = logits[0, mask_token_index].argmax(axis=-1)
-    print(tokenizer.decode(predicted_token_id))

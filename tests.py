@@ -23,18 +23,8 @@ class RhymeScoreTestCase(unittest.TestCase):
         pass
 
     def testRhymeScoreExample(self):
-        # breaking vs checking is not checked explicitly as the splitting of syllables is done in a different way
-        # assert rd.rhyme_score("the", "my") == -1.4, f"score was {rd.rhyme_score('the', 'my')}"
-        # assert rd.rhyme_score("mold", "code") == 4.2, f"score was {rd.rhyme_score('mold', 'code')}"
-        assert rd.rhyme_score("checking my code",
-                              "breaking the mold") == 9.0, f"score was {rd.rhyme_score('checking my code', 'breaking the mold')}"
-
-    def testStressScore(self):
-        pass  # TODO make something
+        test_score = rd.rhyme_score("testing","best thing")
+        assert test_score == 4.8, f"score was {test_score}"
 
     def testConsonantScore(self):
-        # assert rd.score_consonants(['K'], ['K']) == 2.6
         assert round(rd.score_consonants(['L', 'D'], ['D']), 2) == 1.35, f"was {rd.score_consonants(['L', 'D'], ['D'])}"
-
-    def testSelfRhyme(self):
-        pass
